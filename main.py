@@ -151,16 +151,16 @@ def greet(status, recall=False):
         time_greet = "Good evening"
     if status == "old":
         if recall:
-            print(f"Hello {user_name}. Lets look at your pending questions...")
+            print(f"Hello {user_name}")
         else:
             print(f"{time_greet} {user_name}...Glad to see you back!")
-            if master_total > 1:
-                print(f"You have solved {master_total} problems in total, keep going")
-            elif master_total == 1:
-                print("You have solved 1 question in total, keep going")
-            else:
-                print("You have not solved any questions yet")
-            print(f"Your current streak is {streak}")
+        if master_total > 1:
+            print(f"You have solved {master_total} problems in total, keep going")
+        elif master_total == 1:
+            print("You have solved 1 question in total, keep going")
+        else:
+            print("You have not solved any questions yet")
+        print(f"Your current streak is {streak}\n")
         if (remaining_questions_yesterday == 0) and (remaining_questions_today == 0):
             print("You currently have no questions to solve, that's great!")
             print(f"This is superb! Keep up the good work. Happy {today_weekday}!")
