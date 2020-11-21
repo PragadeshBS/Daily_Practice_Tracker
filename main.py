@@ -49,6 +49,10 @@ master_total = 0
 streak = streak_status = 0
 user_name = None
 remaining_questions_today = remaining_questions_yesterday = 0
+current = datetime.now()
+current_date = current.strftime("%d")
+current_month = current.strftime("%B")
+current_year = current.strftime("%Y")
 
 
 def clear():
@@ -62,7 +66,7 @@ def clear():
 
 
 def remaining_qs_unpacker():
-    global remaining_questions_today, remaining_questions_yesterday, streak_status, streak
+    global remaining_questions_today, remaining_questions_yesterday, streak_status, streak, current_month, current_year, current_date
     decrypt_file("data.txt")
     with open("data.txt", "r") as file:
         content = file.readlines()
@@ -73,6 +77,9 @@ def remaining_qs_unpacker():
     remaining_questions_list = [int(i) for i in remaining_questions_list]
     remaining_questions_yesterday = remaining_questions_list[0]
     remaining_questions_today = remaining_questions_list[1]
+    current_date = content[7][8:len(content[7])-1]
+    current_month = content[8][8:len(content[8])-1]
+    current_year = content[9][8:len(content[9])-1]
 
 
 def error_handler(code):
@@ -86,7 +93,7 @@ def error_handler(code):
 
 
 def __init__():
-    global daily_goal, user_name, master_total
+    global daily_goal, user_name, master_total, current_date, current_month, current_year
     try:
         file_check = open("data.txt", "r")
         file2_check = open("data.txt", "r")
@@ -135,13 +142,13 @@ def __init__():
     decrypt_file("data.txt")
     with open("data.txt", "w") as file_write:
         file_write.seek(0)
-        file_write.write(f"Not first launch\nDaily goal: {daily_goal}\nRemaining qs: 0, {daily_goal}\nuser_name: {user_name}\nMaster total: 0\nStreak: 0\nStreak status: 0")
+        file_write.write(f"Not first launch\nDaily goal: {daily_goal}\nRemaining qs: 0, {daily_goal}\nuser_name: {user_name}\nMaster total: 0\nStreak: 0\nStreak status: 0\nStartd: {current_date}\nStartm: {current_month}\nStarty: {current_year}")
     encrypt_file("data.txt")
     today_register()
 
 
 def greet(status, recall=False):
-    global user_name, remaining_questions_yesterday, remaining_questions_today, daily_goal, today_weekday, master_total, streak
+    global user_name, remaining_questions_yesterday, remaining_questions_today, daily_goal, today_weekday, master_total, streak, current_date, current_month, current_year
     current_time = datetime.now()
     if current_time.hour < 12:
         time_greet = "Good Morning"
@@ -151,7 +158,7 @@ def greet(status, recall=False):
         time_greet = "Good evening"
     if status == "old":
         if recall:
-            print(f"Hello {user_name}")
+            print(f"Hello {user_name}. Tracking your progress from {current_date} {current_month} {current_year}\n")
         else:
             print(f"{time_greet} {user_name}...Glad to see you back!")
         if master_total > 1:
@@ -310,14 +317,14 @@ def question_remaining_till_yesterday():
 
 
 def save_changes(new_user_name, new_daily_goal):
-    global remaining_questions_today, remaining_questions_yesterday, master_total, streak, streak_status
+    global remaining_questions_today, remaining_questions_yesterday, master_total, streak, streak_status, current_date, current_month, current_year
     decrypt_file("data.txt")
     with open("data.txt", "r+") as file:
         contents = file.readlines()
-        initial_string = f"Not first launch\nDaily goal: {new_daily_goal}\nRemaining qs: {remaining_questions_yesterday}, {remaining_questions_today}\nuser_name: {new_user_name}\nMaster total: {master_total}\nStreak: {streak}\nStreak status: {streak_status}\n"
+        initial_string = f"Not first launch\nDaily goal: {new_daily_goal}\nRemaining qs: {remaining_questions_yesterday}, {remaining_questions_today}\nuser_name: {new_user_name}\nMaster total: {master_total}\nStreak: {streak}\nStreak status: {streak_status}\nStartd: {current_date}\nStartm: {current_month}\nStarty: {current_year}\n"
         file.seek(0)
         file.write(initial_string)
-        for content in contents[7:]:
+        for content in contents[10:]:
             if content[1:11] == str(today_date):
                 file.write(content)
         file.truncate()
