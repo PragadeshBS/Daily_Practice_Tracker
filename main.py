@@ -158,7 +158,7 @@ def greet(status, recall=False):
         time_greet = "Good evening"
     if status == "old":
         if recall:
-            print(f"Hello {user_name}. Tracking your progress from {current_date} {current_month} {current_year}\n")
+            print(f"Hello {user_name}. Tracking your progress since {current_date} {current_month} {current_year}\n")
         else:
             print(f"{time_greet} {user_name}...Glad to see you back!")
         if master_total > 1:
