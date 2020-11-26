@@ -53,6 +53,7 @@ current = datetime.now()
 current_date = current.strftime("%d")
 current_month = current.strftime("%B")
 current_year = current.strftime("%Y")
+first_launch = True
 
 
 def clear():
@@ -93,7 +94,7 @@ def error_handler(code):
 
 
 def __init__():
-    global daily_goal, user_name, master_total, current_date, current_month, current_year
+    global daily_goal, user_name, master_total, current_date, current_month, current_year, first_launch
     try:
         file_check = open("data.txt", "r")
         file2_check = open("data.txt", "r")
@@ -108,15 +109,14 @@ def __init__():
         encrypt_file("quotes.txt")
     except cryptography.fernet.InvalidToken:
         error_handler(1)
-    todo = False
     decrypt_file("data.txt")
     with open("data.txt", "r") as file:
         content = file.readlines()
         if content:
             if content[0][:16] == "Not first launch":
-                todo = True
+                first_launch = False
     encrypt_file("data.txt")
-    if todo:
+    if not first_launch:
         remaining_qs_unpacker()
         daily_goal = int(content[1][12:])
         master_total = int(content[4][14:])
@@ -148,7 +148,7 @@ def __init__():
 
 
 def greet(status, recall=False):
-    global user_name, remaining_questions_yesterday, remaining_questions_today, daily_goal, today_weekday, master_total, streak, current_date, current_month, current_year
+    global first_launch, user_name, remaining_questions_yesterday, remaining_questions_today, daily_goal, today_weekday, master_total, streak, current_date, current_month, current_year
     current_time = datetime.now()
     if current_time.hour < 12:
         time_greet = "Good Morning"
@@ -158,7 +158,11 @@ def greet(status, recall=False):
         time_greet = "Good evening"
     if status == "old":
         if recall:
-            print(f"Hello {user_name}. Tracking your progress since {current_date} {current_month} {current_year}\n")
+            days_count = days_since_start()
+            out_string = ""
+            if days_count >= 5:
+                out_string = f"for {days_count} days "
+            print(f"Hello {user_name}. Tracking your progress {out_string}since {current_date} {current_month} {current_year}\n")
         else:
             print(f"{time_greet} {user_name}...Glad to see you back!")
         if master_total > 1:
@@ -218,6 +222,16 @@ def greet(status, recall=False):
         if default:
             daily_goal = 2
         print(f"Cool, get ready to solve {daily_goal} or more questions from today to meet your goal")
+
+
+def days_since_start():
+    global current_date, current_month, current_year, first_launch
+    date_now = datetime.now()
+    if not first_launch:
+        old_date_string = f"{current_date} {current_month} {current_year}"
+        old_date_obj = datetime.strptime(old_date_string, "%d %B %Y")
+        return abs((old_date_obj - date_now).days)
+    return -1
 
 
 def reset():
@@ -371,7 +385,7 @@ def user_handler():
                 print("\nThat was not expected. Records were not deleted")
         elif user_input == "e":
             clear()
-            num = input("Enter the number of questions you have solved >>")
+            num = input("Enter the number of questions you have solved, just press 'Enter' for a single question >>")
             attempts, update = 0, False
             while attempts <= 3:
                 if num.isdigit():
@@ -379,13 +393,17 @@ def user_handler():
                     if num >= 1:
                         update = True
                         break
+                if not num:
+                    num = 1
+                    update = True
+                    break
                 attempts += 1
                 if attempts == 2:
                     print("\nThis is your last turn to enter a valid number")
                     print("If a valid number is not entered, for now we will not update your records")
                     print("You can enter the number of questions you solved anytime later")
                 if attempts < 3:
-                    num = input("\nEnter a valid number of questions that you have solved >>")
+                    num = input("\nEnter a valid number of questions that you have solved, just press 'Enter' for a single question >>")
                 else:
                     break
             if update:
