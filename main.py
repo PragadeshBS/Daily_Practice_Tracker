@@ -1,320 +1,92 @@
-from datetime import date
-from datetime import datetime
-from datetime import timedelta
-from os import system, name
+from tkinter import *
+import datetime
+import calendar
 from random import randint
-import sys
-from calendar import day_name
-from cryptography.fernet import Fernet
-import cryptography
 
-key = "68LMAwnm6-WMy3bNzOporMrph5_g27mzhKF77MYJIbc="
+window = Tk()
+window.title("Aptitude Practice Tracker")
+window.geometry("500x500")
+# Icon path goes here... ***window.iconbitmap("")
+# Data text file path goes here... ***data_file = ""
+# Quotes file path goes here... ***quotes_file_path = "" 
 
-f = Fernet(key)
+def set_variables():
+    global first_launch, user_name, today_date, yesterday_date, today_weekday, master_total
+    global current, current_date, current_month, current_year, streak, streak_status, remaining_questions_today
+    global remaining_questions_yesterday, daily_goal
 
+    first_launch = True
+    user_name = "User"
+    today_date = datetime.date.today()
+    yesterday_date = today_date - datetime.timedelta(days=1)
+    today_weekday = calendar.day_name[today_date.weekday()]
+    master_total = streak = streak_status = remaining_questions_today = remaining_questions_yesterday = daily_goal = 0
+    current = datetime.datetime.now()
+    current_date = current.strftime("%d")
+    current_month = current.strftime("%B")
+    current_year = current.strftime("%Y")
 
-def encrypt_file(file_name):
-    with open(file_name, "r") as file_r:
-        insecure_content = file_r.read()
-    secure_content = encrypt(insecure_content)
-    with open(file_name, "wb") as file_w:
-        file_w.write(secure_content)
+def popup(message, timeout=2000, font_color="Black"):
+    popup_label = Label(window, text=message, wraplength=200, padx=20, fg=font_color, font=('arial', 11))
+    popup_label.grid()
+    popup_label.after(timeout, popup_label.grid_remove)
 
+def __init__():
+    global first_launch, daily_goal, master_total, user_name, data_file
 
-def decrypt_file(file_name):
-    with open(file_name, "rb") as file_r:
-        secure_content = file_r.read()
-    insecure_content = decrypt(secure_content)
-    with open(file_name, "w") as file_w:
-        file_w.write(insecure_content)
+    set_variables()
+    
+    try:
+        with open(data_file, "r") as file:
+            content = file.readlines()
+        with open(quotes_file_path, "r") as quotes_file:
+            pass
+    except FileNotFoundError:
+        error_label_text = "We've run into an error :("
+        more_error_info_text = "\n\nSome files could not be found"
+        error_label = Label(window, text=error_label_text, fg="red", font=('arial', 15))
+        more_error_info_label = Label(window, text=more_error_info_text, font=('arial', 11))
+        error_label.grid()
+        more_error_info_label.grid()
+        return
 
+    if content:
+        if content[0][:16] == "Not first launch":
+            first_launch = False
 
-def encrypt(message):
-    encoded_message = message.encode()
-    encrypted = f.encrypt(encoded_message)
-    return encrypted
+    if first_launch:
+        first_launch_handler()
+        return
 
+    extract_data()
+    question_remaining_till_yesterday()
+    streak_update()
+    today_register()
+    save_changes(user_name, daily_goal)
+    main_screen()
 
-def decrypt(message):
-    decrypted = f.decrypt(message)
-    output = decrypted.decode()
-    return output
-
-
-daily_goal = 0
-today_date = date.today()
-yesterday_date = today_date - timedelta(days=1)
-today_weekday = day_name[today_date.weekday()]
-master_total = 0
-streak = streak_status = 0
-user_name = None
-remaining_questions_today = remaining_questions_yesterday = 0
-current = datetime.now()
-current_date = current.strftime("%d")
-current_month = current.strftime("%B")
-current_year = current.strftime("%Y")
-first_launch = True
-
-
-def clear():
-    # for windows
-    if name == 'nt':
-        _ = system('cls')
-
-        # for mac and linux(here, os.name is 'posix')
-    else:
-        _ = system('clear')
-
-
-def remaining_qs_unpacker():
-    global remaining_questions_today, remaining_questions_yesterday, streak_status, streak, current_month, current_year, current_date
-    decrypt_file("data.txt")
-    with open("data.txt", "r") as file:
+def extract_data():
+    global remaining_questions_today, remaining_questions_yesterday, streak_status, user_name
+    global current_date, current_year, streak, current_month, daily_goal, master_total, data_file
+    with open(data_file, "r") as file:
         content = file.readlines()
-    encrypt_file("data.txt")
     streak = int(content[5][8:])
     streak_status = int(content[6][15:])
+    daily_goal = int(content[1][12:])
+    master_total = int(content[4][14:])
+    user_name = content[3][11:len(content[3]) - 1]
     remaining_questions_list = content[2][14:].split(", ")
     remaining_questions_list = [int(i) for i in remaining_questions_list]
     remaining_questions_yesterday = remaining_questions_list[0]
     remaining_questions_today = remaining_questions_list[1]
-    current_date = content[7][8:len(content[7])-1]
-    current_month = content[8][8:len(content[8])-1]
-    current_year = content[9][8:len(content[9])-1]
-
-
-def error_handler(code):
-    print("Oops, looks like we have run into an error :(")
-    if code == 0:
-        print("Some files are missing or they might be tampered with")
-    elif code == 1:
-        print("Some files are corrupt. Try reinstalling the program")
-    input("\nPress 'Enter' to exit the program >>")
-    sys.exit()
-
-
-def __init__():
-    global daily_goal, user_name, master_total, current_date, current_month, current_year, first_launch
-    try:
-        file_check = open("data.txt", "r")
-        file2_check = open("data.txt", "r")
-        file_check.close()
-        file2_check.close()
-    except FileNotFoundError:
-        error_handler(0)
-    try:
-        decrypt_file("data.txt")
-        encrypt_file("data.txt")
-        decrypt_file("quotes.txt")
-        encrypt_file("quotes.txt")
-    except cryptography.fernet.InvalidToken:
-        error_handler(1)
-    decrypt_file("data.txt")
-    with open("data.txt", "r") as file:
-        content = file.readlines()
-        if content:
-            if content[0][:16] == "Not first launch":
-                first_launch = False
-    encrypt_file("data.txt")
-    if not first_launch:
-        remaining_qs_unpacker()
-        daily_goal = int(content[1][12:])
-        master_total = int(content[4][14:])
-        question_remaining_till_yesterday()
-        user_name = content[3][11:len(content[3])-1]
-        streak_update()
-        today_register()
-        greet("old")
-        save_changes(user_name, daily_goal)
-        return
-    user_name = input("Hello, please enter your name >>")
-    attempts = 0
-    while (len(user_name) <= 3) and (attempts < 2):
-        user_name = input("Name should have more than 3 characters. Please enter a valid name >>")
-        if (attempts == 0) and (len(user_name) <= 3):
-            print("\nYou have entered an invalid name repeatedly, this is your last try")
-            print("If you enter an invalid name again, for now we will assume your name as 'User'")
-            print("You can change your name anytime later\n")
-        attempts += 1
-    if (attempts == 2) and (len(user_name) <= 3):
-        user_name = "User"
-    greet("new")
-    decrypt_file("data.txt")
-    with open("data.txt", "w") as file_write:
-        file_write.seek(0)
-        file_write.write(f"Not first launch\nDaily goal: {daily_goal}\nRemaining qs: 0, {daily_goal}\nuser_name: {user_name}\nMaster total: 0\nStreak: 0\nStreak status: 0\nStartd: {current_date}\nStartm: {current_month}\nStarty: {current_year}")
-    encrypt_file("data.txt")
-    today_register()
-
-
-def greet(status, recall=False):
-    global first_launch, user_name, remaining_questions_yesterday, remaining_questions_today, daily_goal, today_weekday, master_total, streak, current_date, current_month, current_year
-    current_time = datetime.now()
-    if current_time.hour < 12:
-        time_greet = "Good Morning"
-    elif current_time.hour < 16:
-        time_greet = "Good afternoon"
-    else:
-        time_greet = "Good evening"
-    if status == "old":
-        if recall:
-            days_count = days_since_start()
-            out_string = ""
-            if days_count >= 5:
-                out_string = f"for {days_count} days "
-            print(f"Hello {user_name}. Tracking your progress {out_string}since {current_date} {current_month} {current_year}\n")
-        else:
-            print(f"{time_greet} {user_name}...Glad to see you back!")
-        if master_total > 1:
-            print(f"You have solved {master_total} problems in total, keep going")
-        elif master_total == 1:
-            print("You have solved 1 question in total, keep going")
-        else:
-            print("You have not solved any questions yet")
-        print(f"Your current streak is {streak}\n")
-        if (remaining_questions_yesterday == 0) and (remaining_questions_today == 0):
-            print("You currently have no questions to solve, that's great!")
-            print(f"This is superb! Keep up the good work. Happy {today_weekday}!")
-            print("P.S. Increase your daily goal if you want to solve and keep track of more questions from tomorrow")
-        elif remaining_questions_yesterday == 0:
-            if remaining_questions_today > 1:
-                print(f"You currently have {remaining_questions_today} questions to solve for today")
-            else:
-                print("You currently have just one question for today, solve it soon")
-            print(f"Having no backlog is always good. Finish the work soon and have a great {today_weekday}!")
-        else:
-            if remaining_questions_yesterday > 1:
-                print(f"You still have to solve {remaining_questions_yesterday} questions from your backlog")
-            else:
-                print(f"You still have a question to solve from your backlog")
-            print("\nProcrastination is not good, solve the questions soon :)")
-            if recall:
-                print("Here's another quote for you...\n")
-            else:
-                print("Here's a quote for you...\n")
-            decrypt_file("quotes.txt")
-            with open("quotes.txt", "r") as quotes_file:
-                quotes = quotes_file.readlines()
-                quote_no = randint(0, len(quotes) - 1)
-                print(quotes[quote_no])
-            encrypt_file("quotes.txt")
-    elif status == "new":
-        clear()
-        print(f"Welcome {user_name}...")
-        print("How many questions would you like to solve daily?")
-        daily_goal = input("Set a daily goal between 1 and 100 (Recommended: 2) >>")
-        attempts, default = 0, True
-        while attempts <= 3:
-            if daily_goal.isdigit():
-                daily_goal = int(daily_goal)
-                if (daily_goal >= 1) and (daily_goal <= 100):
-                    default = False
-                    break
-            attempts += 1
-            if attempts == 2:
-                print("\nThis is your last turn to enter a valid daily goal")
-                print("If a valid goal is not entered, for now your daily goal will be set to 2")
-                print("You can change your daily goal anytime later")
-            if attempts < 3:
-                daily_goal = input("\nSet a valid daily goal between 1 and 100 (Recommended: 2) >>")
-            else:
-                break
-        if default:
-            daily_goal = 2
-        print(f"Cool, get ready to solve {daily_goal} or more questions from today to meet your goal")
-
-
-def days_since_start():
-    global current_date, current_month, current_year, first_launch
-    date_now = datetime.now()
-    if not first_launch:
-        old_date_string = f"{current_date} {current_month} {current_year}"
-        old_date_obj = datetime.strptime(old_date_string, "%d %B %Y")
-        return abs((old_date_obj - date_now).days)
-    return -1
-
-
-def reset():
-    decrypt_file("data.txt")
-    with open("data.txt", "w") as file:
-        file.write("")
-    encrypt_file("data.txt")
-
-
-def streak_update():
-    global streak_status, yesterday_date, streak
-    decrypt_file("data.txt")
-    with open("data.txt", "r+") as file:
-        contents = file.readlines()
-        last = contents[-1]
-        if last[1:11] == str(yesterday_date):
-            if streak_status == 1:
-                streak_status = 0
-            elif streak_status == 0:
-                streak = 0
-        elif last[1:11] != str(today_date):
-            streak_status = streak = 0
-    encrypt_file("data.txt")
-    return 0
-
-
-def today_register():
-    global today_date, daily_goal, remaining_questions_today
-    decrypt_file("data.txt")
-    with open("data.txt", "r+") as file:
-        contents = file.readlines()
-        last = contents[-1]
-        if last[1:11] == str(today_date):
-            encrypt_file("data.txt")
-            return 0
-        string_to_write = "\n$" + str(today_date) + "--%%--" + str(daily_goal)
-        file.seek(0)
-        for content in contents:
-            if not content[0] == "$":
-                file.write(content)
-        file.write(string_to_write)
-        file.truncate()
-        remaining_questions_today = daily_goal
-    encrypt_file("data.txt")
-    return 1
-
-
-def today_qs_register(qs_no):
-    global today_date, remaining_questions_today, remaining_questions_yesterday, daily_goal
-    if remaining_questions_yesterday == 0:
-        remaining_questions_today -= qs_no
-    else:
-        remaining_questions_yesterday -= qs_no
-        if remaining_questions_yesterday < 0:
-            remaining_questions_today += remaining_questions_yesterday
-            remaining_questions_yesterday = 0
-            print("You have solved all questions from your backlog")
-        elif remaining_questions_yesterday == 0:
-            return 3
-        else:
-            return 2
-    if remaining_questions_today <= 0:
-        remaining_questions_today = 0
-    decrypt_file("data.txt")
-    with open("data.txt", "r+") as file:
-        contents = file.readlines()
-        today_reg = contents[len(contents) - 1][:17] + str(remaining_questions_today)
-        file.seek(0)
-        for content in contents:
-            if content[1:11] != str(today_date):
-                file.write(content)
-        file.write(today_reg)
-        file.truncate()
-    encrypt_file("data.txt")
-    return 1
-
+    current_date = content[7][12:len(content[7]) - 1]
+    current_month = content[8][13:len(content[8]) - 1]
+    current_year = content[9][12:len(content[9]) - 1]
 
 def question_remaining_till_yesterday():
-    global remaining_questions_yesterday, today_date, daily_goal
-    decrypt_file("data.txt")
-    with open("data.txt", "r") as file_read:
+    global remaining_questions_yesterday, today_date, daily_goal, data_file
+    with open(data_file, "r") as file_read:
         contents = file_read.readlines()
-    encrypt_file("data.txt")
     for content in contents:
         if content[0] == "$":
             if content[1:11] != str(today_date):
@@ -324,183 +96,479 @@ def question_remaining_till_yesterday():
         if most_recent[1:11] != str(today_date):
             most_recent = most_recent[1:11].split("-")
             most_recent = [int(i) for i in most_recent]
-            most_recent_date = date(most_recent[0], most_recent[1], most_recent[2])
+            most_recent_date = datetime.date(most_recent[0], most_recent[1], most_recent[2])
             difference = today_date - most_recent_date
             remaining_questions_yesterday += (difference.days - 1) * daily_goal
     return 1
 
+def streak_update():
+    global streak_status, yesterday_date, streak, data_file
+    with open(data_file, "r+") as file:
+        contents = file.readlines()
+        last = contents[-1]
+        if last[1:11] == str(yesterday_date):
+            if streak_status == 1:
+                streak_status = 0
+            elif streak_status == 0:
+                streak = 0
+        elif last[1:11] != str(today_date):
+            streak_status = streak = 0
+    return 0
+
+def today_register():
+    global today_date, daily_goal, remaining_questions_today, data_file
+    with open(data_file, "r+") as file:
+        contents = file.readlines()
+        last = contents[-1]
+        if last[1:11] == str(today_date):
+            return 0
+        string_to_write = "\n$" + str(today_date) + "--%%--" + str(daily_goal)
+        file.seek(0)
+        for content in contents:
+            if not content[0] == "$":
+                file.write(content)
+        file.write(string_to_write)
+        file.truncate()
+        remaining_questions_today = daily_goal
+    return 1
 
 def save_changes(new_user_name, new_daily_goal):
-    global remaining_questions_today, remaining_questions_yesterday, master_total, streak, streak_status, current_date, current_month, current_year
-    decrypt_file("data.txt")
-    with open("data.txt", "r+") as file:
+    global remaining_questions_today, remaining_questions_yesterday, master_total, data_file
+    global streak, streak_status, current_date, current_month, current_year
+    with open(data_file, "r+") as file:
         contents = file.readlines()
-        initial_string = f"Not first launch\nDaily goal: {new_daily_goal}\nRemaining qs: {remaining_questions_yesterday}, {remaining_questions_today}\nuser_name: {new_user_name}\nMaster total: {master_total}\nStreak: {streak}\nStreak status: {streak_status}\nStartd: {current_date}\nStartm: {current_month}\nStarty: {current_year}\n"
+        initial_string = f"Not first launch\nDaily goal: {new_daily_goal}"
+        initial_string += f"\nRemaining qs: {remaining_questions_yesterday}, {remaining_questions_today}"
+        initial_string += f"\nuser_name: {new_user_name}\nMaster total: {master_total}\nStreak: {streak}"
+        initial_string += f"\nStreak status: {streak_status}\nStart_date: {current_date}\nStart_month: {current_month}"
+        initial_string += f"\nStart_year: {current_year}\n"
         file.seek(0)
         file.write(initial_string)
         for content in contents[10:]:
             if content[1:11] == str(today_date):
                 file.write(content)
         file.truncate()
-    encrypt_file("data.txt")
 
+def menu(code):
+    if code == 1:
+        menu_bar = Menu(window)
+        view = Menu(menu_bar, tearoff=0)
+        options = Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label="File", menu=view)
+        menu_bar.add_cascade(label="Options", menu=options)
+        view.add_command(label="More info", command=more_info_screen)
+        view.add_command(label="Exit", command=window.destroy)
+        options.add_command(label="Change daily goal", command=change_daily_goal_screen)
+        options.add_command(label="Change name", command=change_name_screen)
+        options.add_command(label="Reset", command=reset_screen)
+        window.config(menu=menu_bar)
+        return
+    remove_menu = Menu(window)
+    window.config(menu=remove_menu)
 
-def user_handler():
-    global daily_goal, user_name, remaining_questions_yesterday, remaining_questions_today, master_total, streak, streak_status
-    while True:
-        user_input = input("\nTry 'help' for a list of commands >>").lower().strip()
-        if user_input == "help":
-            clear()
-            print("\n'e' - to enter the number of questions that you solved")
-            print("Older questions will be first marked as solved.")
-            print("So if you have a backlog, the entered number will first be deducted from backlog number")
-            print("\n'v' - to view the number of pending questions if you have any")
-            print("\n'cd' - to change your daily goal")
-            print("\n'cn' - to change your name")
-            print("\n'exit' - to save changes and quit the program, please use this command to quit")
-            print("Do not use the close button of this window to quit the program")
-            print("If not some of your records might not get saved")
-            print("\n'delete' - to delete your records and reset the program")
-        elif user_input == "v":
-            clear()
-            greet("old", True)
-        elif user_input == "delete":
-            clear()
-            print("\nThis will permanently delete your records, are you sure?")
-            confirmation = input("Enter 'YES' to proceed >>").strip()
-            if confirmation == "YES":
-                reset()
-                clear()
-                print("\nRecords were successfully deleted, a program restart is needed")
-                input("Press Enter to exit the program >>")
-                sys.exit()
-            elif confirmation.lower() == "yes":
-                clear()
-                print("\nEnter 'YES' as such in uppercase to delete records. Records were not deleted now")
-            elif (confirmation.lower() == "n") or (confirmation.lower() == "no"):
-                clear()
-                print("\nRecords were not deleted")
-            else:
-                clear()
-                print("\nThat was not expected. Records were not deleted")
-        elif user_input == "e":
-            clear()
-            num = input("Enter the number of questions you have solved, just press 'Enter' for a single question >>")
-            attempts, update = 0, False
-            while attempts <= 3:
-                if num.isdigit():
-                    num = int(num)
-                    if num >= 1:
-                        update = True
-                        break
-                if not num:
-                    num = 1
-                    update = True
-                    break
-                attempts += 1
-                if attempts == 2:
-                    print("\nThis is your last turn to enter a valid number")
-                    print("If a valid number is not entered, for now we will not update your records")
-                    print("You can enter the number of questions you solved anytime later")
-                if attempts < 3:
-                    num = input("\nEnter a valid number of questions that you have solved, just press 'Enter' for a single question >>")
-                else:
-                    break
-            if update:
-                value = today_qs_register(num)
-                master_total += num
-            else:
-                print("Your records were not updated, try again")
-                continue
-            clear()
-            if value == 1:
-                save_changes(user_name, daily_goal)
-                if remaining_questions_today == 0:
-                    if streak_status == 0:
-                        streak += 1
-                        streak_status = 1
-                    print("Looks like you have achieved your daily goal...")
-                    print("This is superb! Keep up the good work! See you tomorrow")
-                else:
-                    print("Some of today's questions were marked as solved")
-                    print(f"You have to solve {remaining_questions_today} more to meet your daily goal")
-            elif value == 2:
-                save_changes(user_name, daily_goal)
-                print("Some of your previous questions are now marked as solved")
-                print("Solve more questions to put an end to your backlog")
-            elif value == 3:
-                save_changes(user_name, daily_goal)
-                print("Good, you have solved all questions from your backlog")
-                print("Try solving more to reach your goal")
+def main_screen():
+    global user_name, daily_goal, first_launch, master_total, streak, quotes_file_path
 
-        elif user_input == "cd":
-            clear()
-            if not ((remaining_questions_yesterday == 0) and (remaining_questions_today == 0)):
-                print("You need to solve all remaining questions to modify your daily goal")
-                continue
-            print("\nHow many questions would you like to solve daily?")
-            new_goal = input("Set a new daily goal between 1 and 100 (Recommended: 2) >>")
-            attempts, update = 0, False
-            while attempts <= 3:
-                if new_goal.isdigit():
-                    new_goal = int(new_goal)
-                    if (new_goal >= 1) and (new_goal <= 100):
-                        update = True
-                        break
-                attempts += 1
-                if attempts == 2:
-                    print("\nThis is your last turn to enter a valid new daily goal")
-                    print("If a valid goal is not entered, for now your daily goal will not be updated")
-                    print("You can again update your daily goal anytime later")
-                if attempts < 3:
-                    new_goal = input("\nSet a valid daily goal between 1 and 100 (Recommended: 2) >>")
-                else:
-                    break
-            if update:
-                if new_goal == daily_goal:
-                    print(f"Your daily goal is already {daily_goal}")
-                else:
-                    clear()
-                    daily_goal = new_goal
-                    save_changes(user_name, daily_goal)
-                    print("Your daily goal has been successfully changed")
-                    print(f"You will be required to solve {daily_goal} questions from tomorrow")
-            else:
-                print("Your daily goal was not updated")
+    # Menu section
+    menu(1)
+    clear_widgets()
 
-        elif user_input == "cn":
-            clear()
-            new_name = input("Enter your new name >>")
-            name_attempts = 0
-            while (len(new_name) <= 3) and (name_attempts < 2):
-                new_name = input("Name should have more than 3 characters. Please enter a valid name >>")
-                if (name_attempts == 0) and (len(new_name) <= 3):
-                    print("\nYou have entered an invalid name repeatedly, this is your last try")
-                    print("If you enter an invalid name again, for now we will not change your name")
-                    print("You can change your name anytime later\n")
-                name_attempts += 1
-            if (name_attempts == 2) and (len(new_name) <= 3):
-                print("You have entered an invalid name repeatedly, for now your name will not be changed")
-                print("You can change your name anytime later")
-                continue
-            if new_name.lower() == user_name.lower():
-                clear()
-                print(f"Your old name was already {new_name}")
-            else:
-                clear()
-                user_name = new_name
-                save_changes(user_name, daily_goal)
-                print(f"Your name has been successfully changed. Hello {user_name}!")
-
-        elif user_input == "exit":
-            save_changes(user_name, daily_goal)
-            sys.exit()
-
+    # Greet section
+    current_time = datetime.datetime.now()
+    if current_time.hour < 12:
+        time_greet = f"Good Morning {user_name}"
+    elif current_time.hour < 16:
+        time_greet = f"Good afternoon {user_name}"
+    else:
+        time_greet = f"Good evening {user_name}"
+    greet_message = f"{time_greet}... Glad to see you back!"
+    if first_launch:
+        if daily_goal == 1:
+            greet_message = f"{time_greet}... Get ready to solve a daily question from today!"
         else:
-            print("That was not expected, try 'help' for a list of commands")
+            greet_message = f"{time_greet}... Get ready to solve {daily_goal} questions daily!"
+    greet_label = Label(window, text=greet_message, font=('arial', 11))
+    greet_label.grid()
+
+    # info section
+    info_message = f"\nStreak: {streak}"
+    info_label = Label(window, text=info_message, font=('arial', 11))
+    info_label.grid()
+
+    # info section continued
+    if (remaining_questions_yesterday == 0) and (remaining_questions_today == 0):
+        more_info_text = "You currently have no questions to solve, that's great!"
+        more_info_text += f"\nKeep up the good work. Happy {today_weekday}!"
+        more_info_text += "\n\nP.S. Increase your daily goal if you want to solve"
+        more_info_text += " and keep track of more questions from tomorrow"
+    elif remaining_questions_yesterday == 0:
+        if remaining_questions_today > 1:
+            more_info_text = f"You currently have {remaining_questions_today} questions to solve for today"
+        else:
+            more_info_text = "You currently have just one question for today, solve it soon"
+        more_info_text += f"\n\nHaving no backlog is always good."
+        more_info_text += f"\nFinish the work soon and have a great {today_weekday}!"
+    else:
+        if remaining_questions_yesterday > 1:
+            more_info_text = f"You still have to solve {remaining_questions_yesterday} questions from your backlog"
+        else:
+            more_info_text = f"You still have a question to solve from your backlog"
+        more_info_text += "\n\nProcrastination is not good, solve the questions soon :)"
+        more_info_text += "\n\nHere's a quote for you...\n"
+        with open(quotes_file_path, "r") as quotes_file:
+            quotes = quotes_file.readlines()
+            quote_no = randint(0, len(quotes) - 1)
+            more_info_text += quotes[quote_no]
+    more_info_label = Label(window, text=more_info_text, font=('arial', 11), wraplength=250)
+    more_info_label.grid()
+
+    # enter solved questions
+    questions_button = Button(window, text="Solved questions", font=('arial', 11), command=questions_screen)
+    questions_button.grid()
+
+def reset_screen():
+    clear_widgets()
+    menu(0)
+
+    def reset_data():
+        global first_launch, data_file
+        with open(data_file, "w") as file:
+            file.write("")
+        clear_widgets()
+        first_launch = True
+        restart_label_text = "Data was reset successfully, a program restart is required"
+        restart_label = Label(window, text=restart_label_text, font=('arial', 11))
+        restart_button = Button(window, text="Restart", font=('arial', 11), command=__init__)
+        restart_label.grid()
+        restart_button.grid()
+
+    back_button = Button(window, text="Back", command=main_screen)
+    back_button.grid()
+    reset_info_text = "Your data will be permanently erased, do you want to proceed?"
+    reset_info_label = Label(window, text=reset_info_text, fg="Red", font=('arial', 11))
+    proceed_button = Button(window, text="Reset data", font=('arial', 11), command=reset_data)
+    reset_info_label.grid()
+    proceed_button.grid()
+
+def days_since_start():
+    global current_date, current_month, current_year, first_launch
+    date_now = datetime.datetime.now()
+    if not first_launch:
+        old_date_string = f"{current_date} {current_month} {current_year}"
+        old_date_obj = datetime.datetime.strptime(old_date_string, "%d %B %Y")
+        return abs((old_date_obj - date_now).days)
+    return -1
+
+def more_info_screen():
+    global quotes_file_path
+    clear_widgets()
+    days_count = days_since_start()
+
+    back_button = Button(window, text="Back", command=main_screen)
+    back_button.grid()
+
+    current_time = datetime.datetime.now()
+    if current_time.hour < 12:
+        time_greet = f"Good Morning {user_name}"
+    elif current_time.hour < 16:
+        time_greet = f"Good afternoon {user_name}"
+    else:
+        time_greet = f"Good evening {user_name}"
+    greet_message = f"{time_greet}, here's your info..."
+    greet_label = Label(window, text=greet_message, font=('arial', 11))
+    greet_label.grid()
+
+    if days_count >= 5:
+        progress_label_text = f"Tracking your progress for {days_count} days "
+        progress_label_text += f"since {current_date} {current_month} {current_year}"
+        progress_label = Label(window, text=progress_label_text, font=('arial', 11))
+        progress_label.grid()
+    daily_goal_label_text = f"Daily goal: {daily_goal}"
+    daily_goal_label = Label(window, text=daily_goal_label_text, font=('arial', 11))
+    daily_goal_label.grid()
+
+    # info section
+    info_message = f"\nTotal number of questions solved: {master_total}"
+    info_message += f"\nStreak: {streak}"
+    info_label = Label(window, text=info_message, font=('arial', 11))
+    info_label.grid()
+
+    # info section continued
+    if (remaining_questions_yesterday == 0) and (remaining_questions_today == 0):
+        more_info_text = "You currently have no questions to solve, that's great!"
+        more_info_text += f"\nKeep up the good work. Happy {today_weekday}!"
+        more_info_text += "\n\nP.S. Increase your daily goal if you want to solve"
+        more_info_text += " and keep track of more questions from tomorrow"
+    elif remaining_questions_yesterday == 0:
+        if remaining_questions_today > 1:
+            more_info_text = f"You currently have {remaining_questions_today} questions to solve for today"
+        else:
+            more_info_text = "You currently have just one question for today, solve it soon"
+        more_info_text += f"\n\nHaving no backlog is always good."
+        more_info_text += f"\nFinish the work soon and have a great {today_weekday}!"
+    else:
+        if remaining_questions_yesterday > 1:
+            more_info_text = f"You still have to solve {remaining_questions_yesterday} questions from your backlog"
+        else:
+            more_info_text = f"You still have a question to solve from your backlog"
+        more_info_text += "\n\nProcrastination is not good, solve the questions soon :)"
+        more_info_text += "\n\nHere's a quote for you...\n"
+        with open(quotes_file_path, "r") as quotes_file:
+            quotes = quotes_file.readlines()
+            quote_no = randint(0, len(quotes) - 1)
+            more_info_text += quotes[quote_no]
+    more_info_label = Label(window, text=more_info_text, font=('arial', 11), wraplength=300)
+    more_info_label.grid()
+
+def today_qs_register(qs_no):
+    global today_date, remaining_questions_today, remaining_questions_yesterday, daily_goal, data_file
+    to_return = [0, False]
+    if remaining_questions_yesterday == 0:
+        remaining_questions_today -= qs_no
+    else:
+        remaining_questions_yesterday -= qs_no
+        if remaining_questions_yesterday < 0:
+            remaining_questions_today += remaining_questions_yesterday
+            remaining_questions_yesterday = 0
+            to_return[1] = True
+        elif remaining_questions_yesterday == 0:
+            to_return[0] = 3
+            return to_return
+        else:
+            to_return[0] = 2
+            return to_return
+    if remaining_questions_today <= 0:
+        remaining_questions_today = 0
+    with open(data_file, "r+") as file:
+        contents = file.readlines()
+        today_reg = contents[len(contents) - 1][:17] + str(remaining_questions_today)
+        file.seek(0)
+        for content in contents:
+            if content[1:11] != str(today_date):
+                file.write(content)
+        file.write(today_reg)
+        file.truncate()
+    to_return[0] = 1
+    return to_return
+
+def first_launch_handler():
+    global user_name, daily_goal
+    clear_widgets()
+    user_name = StringVar()
+    daily_goal = StringVar()
+    daily_goal.set("2")
+    user_name.set("")
+
+    def submit_details():
+        global user_name, daily_goal
+        try:
+            user_name = name_entry.get()
+            assert ((len(user_name) >= 3) and (len(user_name) <= 20))
+        except AssertionError:
+            popup("Username should have 3-20 characters", font_color="Red")
+            return
+        try:
+            daily_goal = int(daily_goal_entry.get())
+            if daily_goal <= 0: raise ValueError
+        except ValueError:
+            popup("Enter a valid daily goal", font_color="Red")
+            return
+        clear_widgets()
+        if user_name and daily_goal:
+            write_first_details()
+
+    welcome_label = Label(window, pady=30, text="Welcome!", font=('arial', 18))
+
+    name_label = Label(window, text="Enter your name: ", font=('arial', 14))
+    name_entry = Entry(window, textvariable=user_name, font=('arial', 11))
+
+    daily_goal_label = Label(window, text="Set a daily goal (Recommended 2):", font=('arial', 14))
+    daily_goal_entry = Entry(window, textvariable=daily_goal, font=('arial', 11))
+
+    submit_button = Button(window, text="Done", font=('arial', 14), command=submit_details)
+
+    welcome_label.grid(columnspan=2, row=0, ipadx=35, column=0)
+    name_label.grid(row=1, column=0)
+    name_entry.grid(row=1, column=1)
+    daily_goal_label.grid(row=2, column=0)
+    daily_goal_entry.grid(row=2, column=1)
+    submit_button.grid(row=3, column=0, columnspan=3, pady=20)
+
+def write_first_details():
+    global user_name, daily_goal, data_file
+    with open(data_file, "w") as file:
+        file.seek(0)
+        file.write(f"Not first launch\nDaily goal: {daily_goal}")
+        file.write(f"\nRemaining qs: 0, {daily_goal}\nuser_name: {user_name}")
+        file.write("\nMaster total: 0\nStreak: 0\nStreak status: 0")
+        file.write(f"\nStart_date: {current_date}\nStart_month: {current_month}\nStart_year: {current_year}")
+    today_register()
+    main_screen()
+
+def questions_screen():
+    global daily_goal
+
+    def get_questions():
+        global master_total, remaining_questions_today, streak, streak_status
+        nonlocal number_of_questions
+        try:
+            value = int(number_of_questions.get())
+            if value <= 0:
+                raise ValueError
+        except ValueError:
+            popup("Enter a valid number of questions, that you have solved", font_color="Red")
+            return
+        master_total += value
+        register = today_qs_register(value)
+        if remaining_questions_today == 0:
+            if streak_status == 0:
+                streak += 1
+                streak_status = 1
+        after_entry_screen(register)
+
+    clear_widgets()
+
+    back_button = Button(window, text="Back", command=main_screen)
+    back_button.grid(row=0, column=0)
+
+    number_of_questions = StringVar()
+    number_of_questions.set(str(daily_goal))
+    enter_questions_label = Label(window, text="Enter the number of questions you have solved: ", font=('arial', 11))
+    enter_questions_entry = Entry(window, textvariable=number_of_questions)
+    submit_button = Button(window, text="Done", font=('arial', 11), command=get_questions)
+    enter_questions_label.grid()
+    enter_questions_entry.grid(row=1, column=1)
+    submit_button.grid()
+
+def change_daily_goal_screen():
+    global daily_goal
+
+    clear_widgets()
+
+    back_button = Button(window, text="Back", command=main_screen)
+    back_button.grid()
+
+    if not ((remaining_questions_yesterday == 0) and (remaining_questions_today == 0)):
+        info_label_text = "You need to solve all remaining questions before modifying your daily goal"
+        info_label = Label(window, text=info_label_text, fg="Red", font=('arial', 11))
+        info_label.grid()
+        return
+
+    def after_change():
+        global daily_goal
+        clear_widgets()
+        back_button = Button(window, text="Back", command=main_screen)
+        back_button.grid()
+        info_label_text = f"Cool, you will have to solve {daily_goal} questions from tomorrow"
+        info_label = Label(window, text=info_label_text, fg="green", font=('arial', 11))
+        info_label.grid()
+
+    def change_daily_goal():
+        global daily_goal, user_name
+        nonlocal new_daily_goal
+        try:
+            value = int(new_daily_goal.get())
+            if value <= 0: raise ValueError
+        except ValueError:
+            popup("Set a valid daily goal", font_color="Red")
+            return
+        daily_goal = value
+        save_changes(user_name, daily_goal)
+        after_change()
+    
+    new_daily_goal = StringVar()
+
+    old_dg_label_text = f"Your current daily goal: {daily_goal}"
+    old_dg_label = Label(window, text=old_dg_label_text, font=('arial', 11))
+
+    new_dg_entry_label_text = "Set a new daily goal: "
+    new_dg_entry_label = Label(window, text=new_dg_entry_label_text, font=('arial', 11))
+    new_dg_entry = Entry(window, textvariable=new_daily_goal)
+    submit_button = Button(window, text="Done", command=change_daily_goal)
+    old_dg_label.grid()
+    new_dg_entry_label.grid()
+    new_dg_entry.grid(row=2, column=1)
+    submit_button.grid()
+
+def change_name_screen():
+    global user_name
+
+    clear_widgets()
+
+    back_button = Button(window, text="Back", command=main_screen)
+    back_button.grid()
 
 
-if __name__ == "__main__":
+    def after_change():
+        global user_name
+        clear_widgets()
+        back_button = Button(window, text="Back", command=main_screen)
+        back_button.grid()
+        info_label_text = f"We got your new name, hello {user_name}!"
+        info_label = Label(window, text=info_label_text, fg="green", font=('arial', 11))
+        info_label.grid()
+
+    def change_user_name():
+        global daily_goal, user_name
+        nonlocal new_user_name
+        try:
+            value = new_user_name.get()
+            assert ((len(value) >= 3) and (len(value) <= 20))
+        except AssertionError:
+            popup("Name should have 3-20 characters", font_color="Red")
+            return
+        user_name = value
+        save_changes(user_name, daily_goal)
+        after_change()
+    
+    new_user_name = StringVar()
+
+    old_un_label_text = f"Hello {user_name}, how can we call you from now?"
+    old_un_label = Label(window, text=old_un_label_text, font=('arial', 11))
+
+    new_un_entry_label_text = "Set a new name: "
+    new_un_entry_label = Label(window, text=new_un_entry_label_text, font=('arial', 11))
+    new_un_entry = Entry(window, textvariable=new_user_name)
+    submit_button = Button(window, text="Done", command=change_user_name)
+    old_un_label.grid()
+    new_un_entry_label.grid()
+    new_un_entry.grid(row=2, column=1)
+    submit_button.grid()
+
+def after_entry_screen(code):
+    global streak_status, streak
+    clear_widgets()
+    out_message = ""
+    save_changes(user_name, daily_goal)
+    if code[1]:
+        out_message += "You have solved all questions from your backlog"
+    if code[0] == 1:
+        if remaining_questions_today == 0:
+            if streak_status == 0:
+                streak += 1
+                streak_status = 1
+            out_message += "\nLooks like you have achieved your daily goal..."
+            out_message += "\nThis is superb! Keep up the good work! See you tomorrow"
+        else:
+            out_message += "\nSome of today's questions were marked as solved"
+            out_message += f"\nYou have to solve {remaining_questions_today} more to meet your daily goal"
+    elif code[0] == 2:
+        out_message += "\nSome of your previous questions are now marked as solved"
+        out_message += "\nSolve more questions to put an end to your backlog"
+    elif code[0] == 3:
+        out_message += "\nGood, you have solved all questions from your backlog"
+        out_message += "\nTry solving more to reach your goal"
+    out_message_label = Label(window, text=out_message, font=('arial', 11))
+    home_button = Button(window, text="Home", font=('arial', 11), command=main_screen)
+    out_message_label.grid()
+    home_button.grid()
+
+def clear_widgets():
+    widgets = window.winfo_children()
+    for widget in widgets:
+        widget.grid_remove()
+
+if __name__ == '__main__':
     __init__()
 
-user_handler()
+window.mainloop()
